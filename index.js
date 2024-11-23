@@ -1,54 +1,63 @@
-import express from "express"
-import mongoose from "mongoose"
-import dotenv from "dotenv"
-import cookieParser from "cookie-parser"
-import cors from "cors"
-import path from "path";
+import express from "express";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
+import cors from "cors";
 
-dotenv.config()
 
+// Load environment variables
+dotenv.config();
+
+// Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("Connected to mongoDB")
+    console.log("Connected to MongoDB");
   })
   .catch((err) => {
-    console.log(err)
+    console.error("Error connecting to MongoDB:", err.message);
+  });
+
+const app = express();
+
+// Resolve the directory path for serving static files
+
+
+// Middleware
+app.use(express.json()); // Parse JSON requests
+app.use(cookieParser()); // Parse cookies
+app.use(
+  cors({
+    origin: ["http://localhost:5173"], // Allow requests from frontend
+    credentials: true, // Allow sending cookies with cross-origin requests
   })
+);
 
-const app = express()
+// Serve frontend static files
 
-const _dirname = path.resolve();
 
-// to make input as json
-app.use(express.json())
-app.use(cookieParser())
-app.use(cors({ origin: ["http://localhost:5173"], credentials: true }))
+// Import routes
+import authRouter from "./routes/auth.route.js";
+import noteRouter from "./routes/note.route.js";
 
-app.use(express.static(path.join(_dirname, "/frontend/dist")));
-app.get('*',(req,res)=>{
-  res.sendFile(path.resolve(_dirname, "frontend","dist","index.html"))
-})
+// Routes
+app.use("/api/auth", authRouter);
+app.use("/api/note", noteRouter);
 
-app.listen(3000, () => {
-  console.log("Server is running on port 3000")
-})
-
-// import routes
-import authRouter from "./routes/auth.route.js"
-import noteRouter from "./routes/note.route.js"
-
-app.use("/api/auth", authRouter)
-app.use("/api/note", noteRouter)
-
-// error handling
+// Error handling middleware
 app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500
-  const message = err.message || "Internal Serer Error"
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
 
-  return res.status(statusCode).json({
+  res.status(statusCode).json({
     success: false,
     statusCode,
     message,
-  })
-})
+  });
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
